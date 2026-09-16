@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vibe Gallery</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      min-height: 100vh;
+    }
+
+    header {
+      text-align: center;
+      padding: 35px 20px 20px;
+      background: #111;
+      color: white;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+    }
+
+    header p {
+      color: #bbb;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      padding: 20px;
+      background: white;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    .controls input,
+    .controls select,
+    .controls button {
+      padding: 10px 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .controls input {
+      width: 220px;
+    }
+
+    button {
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Vibe Switcher */
+    .vibe-controls {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px;
+      background: #fff;
+    }
+
+    .vibe-controls button {
+      border: none;
+      color: white;
+      font-weight: bold;
+    }
+
+    .bw-btn {
+      background: #333;
+    }
+
+    .vintage-btn {
+      background: #9a6735;
+    }
+
+    .reset-btn {
+      background: #168a58;
+    }
+
+    /* Gallery */
+    .gallery {
+      width: min(1200px, 94%);
+      margin: 30px auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 20px;
+    }
+
+    .photo-card {
+      background: white;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 5px 18px rgba(0, 0, 0, 0.1);
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      position: relative;
+    }
+
+    .photo-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .photo-card img {
+      width: 100%;
+      height: 230px;
+      object-fit: cover;
+      display: block;
+      cursor: pointer;
+
+      /* Smooth Vibe Switcher animation */
+      transition: filter 0.35s ease;
+    }
+
+    .card-info {
+      padding: 14px;
+    }
+
+    .card-info h3 {
+      margin-bottom: 5px;
+    }
+
+    .card-info p {
+      color: #777;
+      font-size: 14px;
+    }
+
+    .favorite {
+      position: absolute;
+      right: 12px;
+      top: 12px;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.9);
+      font-size: 20px;
+      z-index: 2;
+    }
+
+    .favorite.active {
+      color: #e63946;
+    }
+
+    /* Vibe filters */
+    .gallery.bw img {
+      filter: grayscale(100%);
+    }
+
+    .gallery.vintage img {
+      filter: sepia(55%) saturate(80%) contrast(90%);
+    }
+
+    /* Lightbox */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.92);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .lightbox.show {
+      display: flex;
+    }
+
+    .lightbox img {
+      max-width: 90%;
+      max-height: 80vh;
+      border-radius: 10px;
+    }
+
+    .close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 40px;
+      cursor: pointer;
+    }
+
+    .lightbox-title {
+      position: absolute;
+      bottom: 25px;
+      color: white;
+      font-size: 18px;
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 50px;
+      color: #777;
+    }
+
+    @media (max-width: 600px) {
+      header h1 {
+        font-size: 2rem;
+      }
+
+      .controls input {
+        width: 100%;
+      }
+
+      .photo-card img {
+        height: 200px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <h1>📸 Vibe Gallery</h1>
+    <p>Explore your favorite moments in different vibes.</p>
+  </header>
+
+  <!-- Search / Filter Controls -->
+  <div class="controls">
+
+    <input
+      type="text"
+      id="search"
+      placeholder="Search photos..."
+      oninput="renderGallery()"
+    />
+
+    <select id="category" onchange="renderGallery()">
+      <option value="all">All Categories</option>
+      <option value="nature">Nature</option>
+      <option value="city">City</option>
+      <option value="people">People</option>
+      <option value="animals">Animals</option>
+    </select>
+
+    <button onclick="showFavorites()">❤️ Favorites</button>
+    <button onclick="showAll()">🌎 All Photos</button>
+
+  </div>
+
+  <!-- Vibe Switcher -->
+  <div class="vibe-controls">
+
+    <button class="bw-btn" onclick="setVibe('bw')">
+      B&W
+    </button>
+
+    <button class="vintage-btn" onclick="setVibe('vintage')">
+      Vintage
+    </button>
+
+    <button class="reset-btn" onclick="setVibe('reset')">
+      Reset
+    </button>
+
+  </div>
+
+  <!-- Gallery -->
+  <main id="gallery" class="gallery"></main>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox">
+
+    <span class="close" onclick="closeLightbox()">&times;</span>
+
+    <img id="lightboxImage" src="" alt="">
+
+    <div id="lightboxTitle" class="lightbox-title"></div>
+
+  </div>
+
+  <script>
+    /*
+      Photo data
+    */
+    const photos = [
+      {
+        id: 1,
+        title: "Mountain Escape",
+        category: "nature",
+        image: "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 2,
+        title: "City Lights",
+        category: "city",
+        image: "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 3,
+        title: "Ocean View",
+        category: "nature",
+        image: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 4,
+        title: "Happy Friends",
+        category: "people",
+        image: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 5,
+        title: "Wild Fox",
+        category: "animals",
+        image: "https://images.unsplash.com/photo-1474511320723-9a56873867b5?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 6,
+        title: "Forest Road",
+        category: "nature",
+        image: "https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 7,
+        title: "Modern Architecture",
+        category: "city",
+        image: "https://images.unsplash.com/photo-1487958449943-2429e8be8625?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 8,
+        title: "Golden Retriever",
+        category: "animals",
+        image: "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 9,
+        title: "Beach Walk",
+        category: "people",
+        image: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 10,
+        title: "Night Street",
+        category: "city",
+        image: "https://images.unsplash.com/photo-1519501025264-65ba15a82390?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 11,
+        title: "Green Valley",
+        category: "nature",
+        image: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=900&q=80"
+      },
+      {
+        id: 12,
+        title: "Curious Cat",
+        category: "animals",
+        image: "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=900&q=80"
+      }
+    ];
+
+    let favorites = [];
+    let favoritesOnly = false;
+
+    /*
+      Render gallery
+    */
+    function renderGallery() {
+
+      const gallery = document.getElementById("gallery");
+      const searchValue =
+        document.getElementById("search").value.toLowerCase();
+
+      const category =
+        document.getElementById("category").value;
+
+      let filtered = photos.filter(photo => {
+
+        const matchesSearch =
+          photo.title.toLowerCase().includes(searchValue);
+
+        const matchesCategory =
+          category === "all" ||
+          photo.category === category;
+
+        const matchesFavorite =
+          !favoritesOnly ||
+          favorites.includes(photo.id);
+
+        return matchesSearch &&
+               matchesCategory &&
+               matchesFavorite;
+      });
+
+      if (filtered.length === 0) {
+        gallery.innerHTML = `
+          <div class="empty">
+            <h2>No photos found 😕</h2>
+            <p>Try another search or category.</p>
+          </div>
+        `;
+        return;
+      }
+
+      gallery.innerHTML = filtered.map(photo => {
+
+        const isFavorite = favorites.includes(photo.id);
+
+        return `
+          <article class="photo-card">
+
+            <button
+              class="favorite ${isFavorite ? "active" : ""}"
+              onclick="toggleFavorite(${photo.id})"
+              aria-label="Favorite ${photo.title}"
+            >
+              ${isFavorite ? "❤️" : "♡"}
+            </button>
+
+            <img
+              src="${photo.image}"
+              alt="${photo.title}"
+              onclick="openLightbox(${photo.id})"
+              loading="lazy"
+            />
+
+            <div class="card-info">
+              <h3>${photo.title}</h3>
+              <p>${capitalize(photo.category)}</p>
+            </div>
+
+          </article>
+        `;
+      }).join("");
+    }
+
+    /*
+      Vibe Switcher
+    */
+    function setVibe(vibe) {
+
+      const gallery = document.getElementById("gallery");
+
+      // Remove existing vibe classes
+      gallery.classList.remove("bw", "vintage");
+
+      // Reset keeps the original colors
+      if (vibe !== "reset") {
+        gallery.classList.add(vibe);
+      }
+    }
+
+    /*
+      Favorites
+    */
+    function toggleFavorite(id) {
+
+      if (favorites.includes(id)) {
+        favorites = favorites.filter(
+          favoriteId => favoriteId !== id
+        );
+      } else {
+        favorites.push(id);
+      }
+
+      renderGallery();
+    }
+
+    function showFavorites() {
+      favoritesOnly = true;
+      renderGallery();
+    }
+
+    function showAll() {
+      favoritesOnly = false;
+      renderGallery();
+    }
+
+    /*
+      Lightbox
+    */
+    function openLightbox(id) {
+
+      const photo = photos.find(photo => photo.id === id);
+
+      if (!photo) return;
+
+      document.getElementById("lightboxImage").src =
+        photo.image;
+
+      document.getElementById("lightboxImage").alt =
+        photo.title;
+
+      document.getElementById("lightboxTitle").textContent =
+        photo.title;
+
+      document.getElementById("lightbox").classList.add("show");
+    }
+
+    function closeLightbox() {
+
+      document
+        .getElementById("lightbox")
+        .classList.remove("show");
+    }
+
+    /*
+      Close lightbox with Escape
+    */
+    document.addEventListener("keydown", event => {
+
+      if (event.key === "Escape") {
+        closeLightbox();
+      }
+
+    });
+
+    /*
+      Close when clicking the dark background
+    */
+    document
+      .getElementById("lightbox")
+      .addEventListener("click", event => {
+
+        if (event.target.id === "lightbox") {
+          closeLightbox();
+        }
+
+      });
+
+    /*
+      Helper
+    */
+    function capitalize(text) {
+      return text.charAt(0).toUpperCase() + text.slice(1);
+    }
+
+    /*
+      Initial render
+    */
+    renderGallery();
+  </script>
+
+</body>
+</html>
